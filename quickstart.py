@@ -3,7 +3,7 @@
 Downloaded as directed per:
  https://developers.google.com/drive/v3/web/quickstart/python.
 """
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import httplib2
 import os
 
