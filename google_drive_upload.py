@@ -54,15 +54,15 @@ def get_google_file_ids(service):
     return set(response['ids'])
 
 
-def start_upload(filename, u_content_type, u_content_length):
+def start_upload(filename, content_type, byte_size):
     """Start a resumable file upload and return the resumeable upload id."""
     credentials = get_credentials()
     headers = {
         'Authorization': 'Bearer {}'.format(credentials.access_token),
         'Content-Length': '38',  # needs to be variable too
         'Content-Type': 'application/json; charset=UTF-8',
-        'X-Upload-Content-Type': u_content_type,
-        'X-Upload-Content-Length': u_content_length,
+        'X-Upload-Content-Type': content_type,
+        'X-Upload-Content-Length': byte_size,
     }
     params = {'uploadType': 'resumable'}
     json = {'name': filename}
@@ -96,16 +96,34 @@ def get_local_file_data(filename):
             raise ValueError('File is not in local data: {}'.format(filename))
 
 
-def begin_file_upload(filename, u_content_type, u_content_length):
+def begin_file_upload(filename, resume_uri, content_type, byte_size):
     """Make PUT request with content size and resumable URI."""
+    headers = {
+        'Content-Length': byte_size,
+        'Content-Type': content_type,
+    }
+    file_bytes = open(filename, 'rb')
+    requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
-def get_upload_completion_status(resumable_uri, u_content_length):
+def get_upload_completion_status(resume_uri, byte_size):
     """Request the amount of bytes already completed in the upload."""
+    headers = {
+        'Content-Length': 0,
+        'Content-Range': 'bytes */{}'.format(byte_size),
+    }
+    response = requests.put(resume_uri, headers=headers)
+    return int(response.headers['Range'].split('-')[1])
 
 
-def resume_file_upload(filename, progress, u_content_length):
+def resume_file_upload(filename, progress, byte_size):
     """Resume a file upload with information on its completion status."""
+    start = progress + 1
+    headers = {
+        'Content-Length': byte_size - start,
+        'Content-Range': 'bytes {}/{}'.format(progress, byte_size),
+    }
+    requests.put(resume_uri, headers=headers)
 
 
 def insert_placeholder(filename, service):
