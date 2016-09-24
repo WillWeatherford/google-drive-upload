@@ -6,6 +6,7 @@ import string
 import mimetypes
 from itertools import product
 
+FAKE_BINARY = b'10101010101010101010101010101010101010110101010101010'
 IMAGE_EXTS = []
 OTHER_EXTS = []
 for ext, mimetype in mimetypes.types_map.items():
@@ -17,10 +18,10 @@ for ext, mimetype in mimetypes.types_map.items():
 DIR_CONTENTS = product((0, random.randrange(1000)), (random.randrange(1000), 0))
 
 
-def _make_filename(is_image):
+def _make_filename(is_image, ext=None):
     """Make a filename, either an image or some other extension."""
-    ext_list = IMAGE_EXTS if is_image else OTHER_EXTS
-    ext = random.choice(ext_list)
+    if ext is None:
+        ext = random.choice(IMAGE_EXTS if is_image else OTHER_EXTS)
     filename = ''.join(random.sample(string.ascii_letters, 10))
     return '.'.join((filename, ext))
 
@@ -34,10 +35,28 @@ def temp_image_directory(request, tmpdir):
     num_images, num_other = request.param
     image_dir = tmpdir.mkdir('images')
     for _ in range(num_images):
-        image_dir.join(_make_filename(True)).write_binary(b'101010101')
+        image_dir.join(_make_filename(True)).write_binary(FAKE_BINARY)
     for _ in range(num_other):
-        image_dir.join(_make_filename(False)).write_binary(b'101010101')
+        image_dir.join(_make_filename(False)).write_binary(FAKE_BINARY)
     return image_dir, num_images + num_other
+
+
+@pytest.fixture(params=IMAGE_EXTS)
+def image_filename(request, tmpdir):
+    """Generate valid image files in temporary directory."""
+    ext = request.param
+    file = tmpdir.join(_make_filename(True, ext))
+    file.write_binary(b'01010101')
+    return file.strpath
+
+
+@pytest.fixture(params=OTHER_EXTS)
+def other_filename(request, tmpdir):
+    """Generate invalid non-image files in temporary directory."""
+    ext = request.param
+    file = tmpdir.join(_make_filename(False, ext))
+    file.write_binary(b'01010101')
+    return file.strpath
 
 
 def test_base_true():
@@ -65,3 +84,9 @@ def test_iter_directory_size(temp_image_directory):
     image_dir, num_files = temp_image_directory
     results = iter_directory(image_dir.strpath)
     assert len(list(results)) == num_files
+
+
+def test_is_image_true(image_filename):
+    """Test that is_image returns true when expected."""
+    from google_drive_upload import is_image_filename
+    assert is_image_filename(image_filename)
