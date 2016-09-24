@@ -116,7 +116,7 @@ def get_upload_completion_status(resume_uri, byte_size):
     return int(response.headers['Range'].split('-')[1])
 
 
-def resume_file_upload(filename, progress, byte_size):
+def resume_file_upload(resume_uri, progress, byte_size):
     """Resume a file upload with information on its completion status."""
     start = progress + 1
     headers = {
