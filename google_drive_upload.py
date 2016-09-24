@@ -54,11 +54,44 @@ def get_google_file_ids(service):
     return set(response['ids'])
 
 
-def start_upload(filename, content_type, byte_size):
-    """Start a resumable file upload and return the resumeable upload id."""
-    credentials = get_credentials()
+def save_local_file_data(filename, **kwargs):
+    """Save the data for the uploading file in a local json file."""
+    with open(JSON_DATA_FILE, 'r+') as json_file:
+        data = json.load(json_file)
+        data[filename].update(kwargs)
+        json.dump(data, json_file)
+
+
+def get_local_file_data(filename):
+    """Get file information from local json file."""
+    with open(JSON_DATA_FILE, 'r') as json_file:
+        data = json.load(json_file)
+        try:
+            return data['filename']
+        except KeyError:
+            raise ValueError('File is not in local data: {}'.format(filename))
+
+
+def insert_placeholder(filename, access_token):
+    """Insert 0 byte file onto Google Drive instead of real thing."""
     headers = {
-        'Authorization': 'Bearer {}'.format(credentials.access_token),
+        'Content-Type': 'image/jpeg',
+        'Authorization': 'Bearer {}'.format(access_token),
+        'Content-Length': 0,
+    }
+    params = {'uploadType': 'media'}
+    requests.post(
+        UPLOAD_URL,
+        params=params,
+        headers=headers,
+        files={filename: b''},
+    )
+
+
+def start_resumable_session(filename, content_type, byte_size, access_token):
+    """Start a resumable file upload and return the resumeable upload id."""
+    headers = {
+        'Authorization': 'Bearer {}'.format(access_token),
         'Content-Length': '38',  # needs to be variable too
         'Content-Type': 'application/json; charset=UTF-8',
         'X-Upload-Content-Type': content_type,
@@ -78,27 +111,10 @@ def start_upload(filename, content_type, byte_size):
         raise ValueError('Failed to get upload ID ')
 
 
-def save_local_file_data(filename, **kwargs):
-    """Save the data for the uploading file in a local json file."""
-    with open(JSON_DATA_FILE, 'r+') as json_file:
-        data = json.load(json_file)
-        data[filename].update(kwargs)
-        json.dump(data, json_file)
-
-
-def get_local_file_data(filename):
-    """Get file information from local json file."""
-    with open(JSON_DATA_FILE, 'r') as json_file:
-        data = json.load(json_file)
-        try:
-            return data['filename']
-        except KeyError:
-            raise ValueError('File is not in local data: {}'.format(filename))
-
-
-def begin_file_upload(filename, resume_uri, content_type, byte_size):
+def begin_file_upload(filename, resume_uri, content_type, byte_size, access_token):
     """Make PUT request with content size and resumable URI."""
     headers = {
+        'Authorization': 'Bearer {}'.format(access_token),
         'Content-Length': byte_size,
         'Content-Type': content_type,
     }
@@ -106,9 +122,10 @@ def begin_file_upload(filename, resume_uri, content_type, byte_size):
     requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
-def get_upload_completion_status(resume_uri, byte_size):
+def get_upload_completion_status(resume_uri, byte_size, access_token):
     """Request the amount of bytes already completed in the upload."""
     headers = {
+        'Authorization': 'Bearer {}'.format(access_token),
         'Content-Length': 0,
         'Content-Range': 'bytes */{}'.format(byte_size),
     }
@@ -116,18 +133,15 @@ def get_upload_completion_status(resume_uri, byte_size):
     return int(response.headers['Range'].split('-')[1])
 
 
-def resume_file_upload(resume_uri, progress, byte_size):
+def resume_file_upload(resume_uri, progress, byte_size, access_token):
     """Resume a file upload with information on its completion status."""
     start = progress + 1
     headers = {
+        'Authorization': 'Bearer {}'.format(access_token),
         'Content-Length': byte_size - start,
         'Content-Range': 'bytes {}/{}'.format(progress, byte_size),
     }
     requests.put(resume_uri, headers=headers)
-
-
-def insert_placeholder(filename, service):
-    """Insert 0 byte file onto Google Drive instead of real thing."""
 
 
 def process_computer_vision(filename):
