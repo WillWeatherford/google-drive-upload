@@ -5,7 +5,7 @@ import httplib2
 from apiclient import discovery
 from quickstart import get_credentials
 
-
+IDS_COUNT = 20
 IMAGE_EXTS = set()
 OTHER_EXTS = set()
 for ext, mimetype in mimetypes.types_map.items():
@@ -34,3 +34,11 @@ def make_google_drive_service():
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
     return discovery.build('drive', 'v3', http=http)
+
+
+def get_google_file_ids(service):
+    """Get a new batch of file ids for Google Drive with given service."""
+    files_resrc = service.files()
+    get_ids_request = files_resrc.generateIds(space='drive', count=IDS_COUNT)
+    response = get_ids_request.execute()
+    return set(response['ids'])

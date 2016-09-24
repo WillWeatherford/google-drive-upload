@@ -52,6 +52,13 @@ def other_filename(request, tmpdir):
     return file.strpath
 
 
+@pytest.fixture(scope='session')
+def service():
+    """Start a google API service usable for testing."""
+    from google_drive_upload import make_google_drive_service
+    return make_google_drive_service()
+
+
 def test_base_true():
     """Base level test."""
     assert True
@@ -112,14 +119,12 @@ def test_credentials_valid():
     assert not credentials.invalid
 
 
-def test_make_google_drive_service():
+def test_make_google_drive_service(service):
     """Test that a google drive service instance is created smoothly."""
-    from google_drive_upload import make_google_drive_service
-    service = make_google_drive_service()
     assert isinstance(service, Resource)
 
 
-def test_get_google_file_ids():
+def test_get_google_file_ids(service):
     """Test request to get new unique google file ids to use."""
     from google_drive_upload import get_google_file_ids
-    assert isinstance(get_google_file_ids(), set)
+    assert isinstance(get_google_file_ids(service), set)
