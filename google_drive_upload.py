@@ -4,6 +4,7 @@ import json
 import httplib2
 import requests
 import mimetypes
+import random
 from apiclient import discovery
 from quickstart import get_credentials
 
@@ -97,3 +98,12 @@ def get_upload_completion_status(resumable_uri, u_content_length):
 
 def resume_file_upload(filename, progress, u_content_length):
     """Resume a file upload with information on its completion status."""
+
+
+def insert_placeholder(filename, service):
+    """Insert 0 byte file onto Google Drive instead of real thing."""
+
+
+def process_computer_vision(filename):
+    """Dummy function simulating real processing of file by computer vision."""
+    return random.choice([0, 1])
