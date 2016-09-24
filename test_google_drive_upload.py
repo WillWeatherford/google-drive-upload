@@ -4,6 +4,7 @@ import random
 import pytest
 import string
 from itertools import product
+from apiclient.discovery import Resource
 from google_drive_upload import IMAGE_EXTS, OTHER_EXTS
 
 FAKE_BINARY = b'10101010101010101010101010101010101010110101010101010'
@@ -109,3 +110,10 @@ def test_credentials_valid():
     from quickstart import get_credentials
     credentials = get_credentials()
     assert not credentials.invalid
+
+
+def test_make_google_drive_service():
+    """Test that a google drive service instance is created smoothly."""
+    from google_drive_upload import make_google_drive_service
+    service = make_google_drive_service()
+    assert isinstance(service, Resource)
