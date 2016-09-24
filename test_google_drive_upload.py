@@ -3,27 +3,19 @@ from __future__ import print_function, unicode_literals
 import random
 import pytest
 import string
-import mimetypes
 from itertools import product
+from google_drive_upload import IMAGE_EXTS, OTHER_EXTS
 
 FAKE_BINARY = b'10101010101010101010101010101010101010110101010101010'
-IMAGE_EXTS = []
-OTHER_EXTS = []
-for ext, mimetype in mimetypes.types_map.items():
-    if mimetype.startswith('image'):
-        IMAGE_EXTS.append(ext)
-    else:
-        OTHER_EXTS.append(ext)
-
 DIR_CONTENTS = product((0, random.randrange(1000)), (random.randrange(1000), 0))
 
 
 def _make_filename(is_image, ext=None):
     """Make a filename, either an image or some other extension."""
     if ext is None:
-        ext = random.choice(IMAGE_EXTS if is_image else OTHER_EXTS)
+        ext = random.choice(list(IMAGE_EXTS) if is_image else list(OTHER_EXTS))
     filename = ''.join(random.sample(string.ascii_letters, 10))
-    return '.'.join((filename, ext))
+    return ''.join((filename, ext))
 
 
 @pytest.fixture(params=DIR_CONTENTS)
@@ -46,7 +38,7 @@ def image_filename(request, tmpdir):
     """Generate valid image files in temporary directory."""
     ext = request.param
     file = tmpdir.join(_make_filename(True, ext))
-    file.write_binary(b'01010101')
+    file.write_binary(FAKE_BINARY)
     return file.strpath
 
 
@@ -55,7 +47,7 @@ def other_filename(request, tmpdir):
     """Generate invalid non-image files in temporary directory."""
     ext = request.param
     file = tmpdir.join(_make_filename(False, ext))
-    file.write_binary(b'01010101')
+    file.write_binary(FAKE_BINARY)
     return file.strpath
 
 
