@@ -82,3 +82,9 @@ def test_is_image_true(image_filename):
     """Test that is_image returns true when expected."""
     from google_drive_upload import is_image_filename
     assert is_image_filename(image_filename)
+
+
+def test_is_image_false(other_filename):
+    """Test that is_image returns true when expected."""
+    from google_drive_upload import is_image_filename
+    assert not is_image_filename(other_filename)
