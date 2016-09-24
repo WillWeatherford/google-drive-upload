@@ -51,6 +51,9 @@ def test_iter_directory_arg():
 
 def test_iter_directory_invalid():
     """Test that iter_directory raises ValueError when given an invalid dir."""
+    from google_drive_upload import iter_directory
+    with pytest.raises(ValueError):
+        list(iter_directory('not/a/real/dir'))
 
 
 def test_iter_directory_size(temp_image_directory):
