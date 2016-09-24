@@ -56,6 +56,9 @@ def test_base_true():
     assert True
 
 
+########################################################################
+# Tests for iterating over local directory and finding image files
+
 def test_iter_directory_arg():
     """Test that iter_directory requires an argument."""
     from google_drive_upload import iter_directory
@@ -96,3 +99,13 @@ def test_filter_images_size(temp_image_directory):
     image_dir, num_images, num_other = temp_image_directory
     result = filter(is_image_filename, iter_directory(image_dir.strpath))
     assert len(list(result)) == num_images
+
+
+########################################################################
+# Tests for connecting to Google Drive API
+
+def test_credentials_valid():
+    """Test that get_credentials from quickstart still works."""
+    from quickstart import get_credentials
+    credentials = get_credentials()
+    assert not credentials.invalid
