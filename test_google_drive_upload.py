@@ -34,9 +34,9 @@ def temp_image_directory(request, tmpdir):
     num_images, num_other = request.param
     image_dir = tmpdir.mkdir('images')
     for _ in range(num_images):
-        image_dir.join(_make_filename(True))
+        image_dir.join(_make_filename(True)).write_binary(b'101010101')
     for _ in range(num_other):
-        image_dir.join(_make_filename(False))
+        image_dir.join(_make_filename(False)).write_binary(b'101010101')
     return image_dir, num_images + num_other
 
 
