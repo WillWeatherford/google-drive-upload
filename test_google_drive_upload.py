@@ -47,6 +47,9 @@ def test_base_true():
 
 def test_iter_directory_arg():
     """Test that iter_directory requires an argument."""
+    from google_drive_upload import iter_directory
+    with pytest.raises(TypeError):
+        iter_directory()
 
 
 def test_iter_directory_invalid():
