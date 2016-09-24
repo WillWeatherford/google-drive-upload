@@ -1,7 +1,9 @@
 """Gather, analyze and upload image files to Google Drive."""
 import os
-import mimetypes
+import json
 import httplib2
+import requests
+import mimetypes
 from apiclient import discovery
 from quickstart import get_credentials
 
@@ -13,6 +15,8 @@ for ext, mimetype in mimetypes.types_map.items():
         IMAGE_EXTS.add(ext)
     else:
         OTHER_EXTS.add(ext)
+UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files'
+JSON_DATA_FILE = 'local_storage.json'
 
 
 def iter_directory(path):
@@ -42,3 +46,54 @@ def get_google_file_ids(service):
     get_ids_request = files_resrc.generateIds(space='drive', count=IDS_COUNT)
     response = get_ids_request.execute()
     return set(response['ids'])
+
+
+def start_upload(filename, u_content_type, u_content_length):
+    """Start a resumable file upload and return the resumeable upload id."""
+    credentials = get_credentials()
+    headers = {
+        'Authorization': 'Bearer {}'.format(credentials.access_token),
+        'Content-Length': '38',  # needs to be variable too
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': u_content_type,
+        'X-Upload-Content-Length': u_content_length,
+    }
+    params = {'uploadType': 'resumable'}
+    json = {'name': filename}
+    response = requests.post(
+        UPLOAD_URL,
+        params=params,
+        headers=headers,
+        json=json,
+    )
+    try:
+        return response.headers['Location']
+    except KeyError:
+        raise ValueError('Failed to get upload ID ')
+
+
+def save_file_upload_data(filename, file_id, upload_id):
+    """Save the data for the uploading file in a local json file."""
+    with open(JSON_DATA_FILE, 'r+') as json_file:
+        data = json.load(json_file)
+        data[filename] = {'file_id': file_id, 'upload_id': upload_id}
+        json.dump(data, json_file)
+
+
+def get_file_upload_data(filename):
+    """Get file information from local json file."""
+    with open(JSON_DATA_FILE, 'r') as json_file:
+        data = json.load(json_file)
+        return data.get('filename', {})
+
+
+def begin_file_upload(filename, u_content_type, u_content_length):
+    """Make PUT request with content size and resumable URI."""
+
+
+def get_upload_completion_status(resumable_uri, u_content_length):
+    """Request the amount of bytes already completed in the upload."""
+
+
+def resume_file_upload(filename, progress, u_content_length):
+    """Resume a file upload with information on its completion status."""

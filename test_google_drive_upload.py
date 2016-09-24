@@ -128,3 +128,8 @@ def test_get_google_file_ids(service):
     """Test request to get new unique google file ids to use."""
     from google_drive_upload import get_google_file_ids
     assert isinstance(get_google_file_ids(service), set)
+
+
+def test_start_upload_returns_uri(service):
+    """Test that attempt to start uploading a file returns a resumable uri."""
+    from google_drive_upload import start_upload
