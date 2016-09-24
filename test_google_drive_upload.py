@@ -117,3 +117,9 @@ def test_make_google_drive_service():
     from google_drive_upload import make_google_drive_service
     service = make_google_drive_service()
     assert isinstance(service, Resource)
+
+
+def test_get_google_file_ids():
+    """Test request to get new unique google file ids to use."""
+    from google_drive_upload import get_google_file_ids
+    assert isinstance(get_google_file_ids(), set)
