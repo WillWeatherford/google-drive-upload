@@ -34,6 +34,11 @@ def is_image_filename(filename):
     return ext in IMAGE_EXTS
 
 
+def get_file_data(filename):
+    """Return number of bytes aka content length and content type."""
+    return 0, 'image/jpeg'
+
+
 def make_google_drive_service():
     """Create a new instance of a Google Drive API service."""
     credentials = get_credentials()
@@ -73,11 +78,11 @@ def start_upload(filename, u_content_type, u_content_length):
         raise ValueError('Failed to get upload ID ')
 
 
-def save_file_upload_data(filename, file_id, upload_id):
+def save_file_upload_data(filename, file_id, resume_uri):
     """Save the data for the uploading file in a local json file."""
     with open(JSON_DATA_FILE, 'r+') as json_file:
         data = json.load(json_file)
-        data[filename] = {'file_id': file_id, 'upload_id': upload_id}
+        data[filename] = {'file_id': file_id, 'resume_uri': resume_uri}
         json.dump(data, json_file)
 
 
@@ -85,7 +90,10 @@ def get_file_upload_data(filename):
     """Get file information from local json file."""
     with open(JSON_DATA_FILE, 'r') as json_file:
         data = json.load(json_file)
-        return data.get('filename', {})
+        try:
+            return data['filename']
+        except KeyError:
+            raise KeyError('File is not in local data: {}'.format(filename))
 
 
 def begin_file_upload(filename, u_content_type, u_content_length):
@@ -107,3 +115,32 @@ def insert_placeholder(filename, service):
 def process_computer_vision(filename):
     """Dummy function simulating real processing of file by computer vision."""
     return random.choice([0, 1])
+
+
+def main():
+    """Main process loop."""
+    image_files = filter(is_image_filename, iter_directory)
+
+    for filename in image_files:
+        byte_size, content_type = get_file_data(filename)
+        try:
+            file_data = get_file_upload_data(filename)
+        except KeyError:
+            continue
+
+        is_complete = file_data['is_complete']
+        if is_complete:
+            continue
+
+        try:
+            resume_uri = file_data['resume_uri']
+            progress = get_upload_completion_status(resume_uri, byte_size)
+            resume_file_upload(filename, progress, byte_size)
+        except KeyError:
+            # no record in google of this upload ever having started
+            resume_uri = begin_file_upload(filename, content_type, byte_size)
+            save_file_upload_data(filename, file_id, resume_uri)
+
+
+if __name__ == '__main__':
+    main()
