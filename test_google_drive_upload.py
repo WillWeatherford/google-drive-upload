@@ -30,7 +30,7 @@ def temp_image_directory(request, tmpdir):
         image_dir.join(_make_filename(True)).write_binary(FAKE_BINARY)
     for _ in range(num_other):
         image_dir.join(_make_filename(False)).write_binary(FAKE_BINARY)
-    return image_dir, num_images + num_other
+    return image_dir, num_images, num_other
 
 
 @pytest.fixture(params=IMAGE_EXTS)
@@ -73,9 +73,9 @@ def test_iter_directory_invalid():
 def test_iter_directory_size(temp_image_directory):
     """Test that iter_directory generates expected number of files."""
     from google_drive_upload import iter_directory
-    image_dir, num_files = temp_image_directory
+    image_dir, num_images, num_other = temp_image_directory
     results = iter_directory(image_dir.strpath)
-    assert len(list(results)) == num_files
+    assert len(list(results)) == num_images + num_other
 
 
 def test_is_image_true(image_filename):
@@ -88,3 +88,11 @@ def test_is_image_false(other_filename):
     """Test that is_image returns true when expected."""
     from google_drive_upload import is_image_filename
     assert not is_image_filename(other_filename)
+
+
+def test_filter_images_size(temp_image_directory):
+    """Test that is_image_filename yields expected amount as filter."""
+    from google_drive_upload import iter_directory, is_image_filename
+    image_dir, num_images, num_other = temp_image_directory
+    result = filter(is_image_filename, iter_directory(image_dir.strpath))
+    assert len(list(result)) == num_images
