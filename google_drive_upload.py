@@ -119,6 +119,7 @@ def process_computer_vision(filename):
 
 def main():
     """Main process loop."""
+    service = make_google_drive_service()
     image_files = filter(is_image_filename, iter_directory)
 
     for filename in image_files:
@@ -129,6 +130,7 @@ def main():
             file_data = {}
             cv_result = process_computer_vision(filename)
             if not cv_result:
+                insert_placeholder(filename, service)
                 save_local_file_data(filename, complete=True)
                 continue
 
