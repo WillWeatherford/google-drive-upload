@@ -21,7 +21,7 @@ def _make_filename(is_image):
     """Make a filename, either an image or some other extension."""
     ext_list = IMAGE_EXTS if is_image else OTHER_EXTS
     ext = random.choice(ext_list)
-    filename = random.sample(string.ascii_letters, random.randrange(3, 20))
+    filename = ''.join(random.sample(string.ascii_letters, 10))
     return '.'.join((filename, ext))
 
 
@@ -37,7 +37,7 @@ def temp_image_directory(request, tmpdir):
         image_dir.join(_make_filename(True))
     for _ in range(num_other):
         image_dir.join(_make_filename(False))
-    return image_dir
+    return image_dir, num_images + num_other
 
 
 def test_base_true():
@@ -55,3 +55,7 @@ def test_iter_directory_invalid():
 
 def test_iter_directory_size(temp_image_directory):
     """Test that iter_directory generates expected number of files."""
+    from google_drive_upload import iter_directory
+    image_dir, num_files = temp_image_directory
+    results = iter_directory(image_dir.strpath)
+    assert len(list(results)) == num_files
