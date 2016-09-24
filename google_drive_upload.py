@@ -78,22 +78,22 @@ def start_upload(filename, u_content_type, u_content_length):
         raise ValueError('Failed to get upload ID ')
 
 
-def save_file_upload_data(filename, file_id, resume_uri):
+def save_local_file_data(filename, **kwargs):
     """Save the data for the uploading file in a local json file."""
     with open(JSON_DATA_FILE, 'r+') as json_file:
         data = json.load(json_file)
-        data[filename] = {'file_id': file_id, 'resume_uri': resume_uri}
+        data[filename].update(kwargs)
         json.dump(data, json_file)
 
 
-def get_file_upload_data(filename):
+def get_local_file_data(filename):
     """Get file information from local json file."""
     with open(JSON_DATA_FILE, 'r') as json_file:
         data = json.load(json_file)
         try:
             return data['filename']
         except KeyError:
-            raise KeyError('File is not in local data: {}'.format(filename))
+            raise ValueError('File is not in local data: {}'.format(filename))
 
 
 def begin_file_upload(filename, u_content_type, u_content_length):
@@ -124,22 +124,28 @@ def main():
     for filename in image_files:
         byte_size, content_type = get_file_data(filename)
         try:
-            file_data = get_file_upload_data(filename)
-        except KeyError:
-            continue
+            file_data = get_local_file_data(filename)
+        except ValueError:
+            file_data = {}
+            cv_result = process_computer_vision(filename)
+            if not cv_result:
+                save_local_file_data(filename, complete=True)
+                continue
 
-        is_complete = file_data['is_complete']
-        if is_complete:
+        if file_data.get('is_complete'):
+            # Better to save locally than to always query API for completeness
             continue
 
         try:
             resume_uri = file_data['resume_uri']
             progress = get_upload_completion_status(resume_uri, byte_size)
-            resume_file_upload(filename, progress, byte_size)
         except KeyError:
             # no record in google of this upload ever having started
             resume_uri = begin_file_upload(filename, content_type, byte_size)
-            save_file_upload_data(filename, file_id, resume_uri)
+            save_local_file_data(filename, resume_uri=resume_uri, complete=False)
+            progress = 0
+
+        resume_file_upload(filename, progress, byte_size)
 
 
 if __name__ == '__main__':
