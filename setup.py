@@ -2,6 +2,21 @@
 from __future__ import print_function, unicode_literals
 from setuptools import setup, find_packages
 
+requires = [
+    'google-api-python-client',
+    'requests',
+]
+
+dev_requires = [
+    'ipython',
+]
+
+test_requires = [
+    'pytest',
+    'pytest-cov',
+    'tox',
+]
+
 
 setup(name='Google Drive Image Uploader',
       version='0.0',
@@ -15,6 +30,11 @@ setup(name='Google Drive Image Uploader',
       include_package_data=True,
       zip_safe=False,
       test_suite='google-drive-upload',
+      install_requires=requires,
+      extras_require={
+          'test': test_requires,
+          'dev': dev_requires,
+      },
       entry_points="""\
       [console_scripts]
       google-drive=google_drive_upload:main
