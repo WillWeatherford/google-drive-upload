@@ -35,9 +35,14 @@ def is_image_filename(filename):
     return ext in IMAGE_EXTS
 
 
-def get_file_data(filename):
-    """Return number of bytes aka content length and content type."""
-    return 0, 'image/jpeg'
+def get_file_byte_size(filename):
+    """Return number of bytes aka content length of a given file by name."""
+    return os.path.getsize()
+
+
+def get_file_mimetype(filename):
+    """Return the mimetype of a given file by name."""
+    return mimetype.guess_type(filename)[0]
 
 
 def make_google_drive_service():
@@ -156,10 +161,10 @@ def main(directory):
     """Main process loop."""
     credentials = get_credentials()
     access_token = credentials.access_token
-    image_files = filter(is_image_filename, iter_directory(directory))
 
-    for filename in image_files:
-        byte_size, content_type = get_file_data(filename)
+    for filename in filter(is_image_filename, iter_directory(directory)):
+        byte_size = get_file_byte_size(filename)
+        content_type = get_file_mimetype(filename)
         try:
             file_data = get_local_file_data(filename)
         except ValueError:
@@ -196,4 +201,4 @@ if __name__ == '__main__':
     except IndexError:
         print('Usage: gdrive <directory>')
         sys.exit()
-    main()
+    main(directory)
