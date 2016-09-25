@@ -70,8 +70,9 @@ def get_google_file_ids(service):
 
 def save_local_file_data(filename, **kwargs):
     """Save the data for the uploading file in a local json file."""
-    with open(JSON_DATA_FILE, 'r+') as json_file:
+    with open(JSON_DATA_FILE, 'r') as json_file:
         data = json.load(json_file)
+    with open(JSON_DATA_FILE, 'w') as json_file:
         data.setdefault(filename, {}).update(kwargs)
         json.dump(data, json_file)
 
