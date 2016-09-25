@@ -45,6 +45,14 @@ def get_file_mimetype(filename):
     return mimetypes.guess_type(filename)[0]
 
 
+def get_access_token():
+    """Get an access token for Google Drive API."""
+    credentials = get_credentials()
+    if credentials.access_token_expired:
+        credentials.refresh(httplib2.Http())
+    return credentials.access_token
+
+
 def make_google_drive_service():
     """Create a new instance of a Google Drive API service."""
     credentials = get_credentials()
@@ -95,7 +103,7 @@ def upload_placeholder(filename, access_token):
     )
 
 
-def start_resumable_session(filename, content_type, byte_size, access_token):
+def start_upload_session(filename, content_type, byte_size, access_token):
     """Start a resumable file upload and return the resumeable upload id."""
     headers = {
         'Authorization': 'Bearer {}'.format(access_token),
@@ -104,13 +112,11 @@ def start_resumable_session(filename, content_type, byte_size, access_token):
         'X-Upload-Content-Type': content_type,
         'X-Upload-Content-Length': byte_size,
     }
-    params = {'uploadType': 'resumable'}
-    json = {'name': filename}
     response = requests.post(
         UPLOAD_URL,
-        params=params,
         headers=headers,
-        json=json,
+        json={'name': filename},
+        params={'uploadType': 'resumable'},
     )
     try:
         return response.headers['Location']
@@ -130,7 +136,7 @@ def begin_file_upload(filename, filepath, resume_uri, content_type, byte_size, a
         requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
-def get_upload_completion_status(resume_uri, byte_size, access_token):
+def get_upload_progress(resume_uri, byte_size, access_token):
     """Request the amount of bytes already completed in the upload."""
     headers = {
         'Authorization': 'Bearer {}'.format(access_token),
@@ -143,7 +149,7 @@ def get_upload_completion_status(resume_uri, byte_size, access_token):
 
 def resume_file_upload(filename, filepath, resume_uri, progress, byte_size, access_token):
     """Resume a file upload with information on its completion progress."""
-    start = int(progress) + 1
+    start = progress + 1
     byte_size = int(byte_size)
 
     headers = {
@@ -164,8 +170,7 @@ def process_computer_vision(filepath):
 
 def main(directory):
     """Main process loop."""
-    credentials = get_credentials()
-    access_token = credentials.access_token
+    access_token = get_access_token()
 
     for filename in filter(is_image_filename, iter_directory(directory)):
 
@@ -189,10 +194,10 @@ def main(directory):
 
         try:
             resume_uri = file_data['resume_uri']
-            progress = get_upload_completion_status(resume_uri, byte_size, access_token)
+            progress = get_upload_progress(resume_uri, byte_size, access_token)
         except KeyError:
             # no record in google of this upload ever having started
-            resume_uri = start_resumable_session(filename, content_type, byte_size, access_token)
+            resume_uri = start_upload_session(filename, content_type, byte_size, access_token)
             save_local_file_data(filename, resume_uri=resume_uri, complete=False)
             progress = 0
 
@@ -210,7 +215,6 @@ if __name__ == '__main__':
     try:
         directory = sys.argv[1]
     except IndexError:
-        print('Usage: gdrive <directory>')
         sys.exit()
     else:
         main(directory)
