@@ -4,6 +4,7 @@ import random
 import pytest
 import string
 from itertools import product
+from apiclient.discovery import Resource
 from google_drive_upload import IMAGE_EXTS, OTHER_EXTS
 
 FAKE_BINARY = b'10101010101010101010101010101010101010110101010101010'
@@ -51,10 +52,20 @@ def other_filename(request, tmpdir):
     return file.strpath
 
 
+@pytest.fixture(scope='session')
+def service():
+    """Start a google API service usable for testing."""
+    from google_drive_upload import make_google_drive_service
+    return make_google_drive_service()
+
+
 def test_base_true():
     """Base level test."""
     assert True
 
+
+########################################################################
+# Tests for iterating over local directory and finding image files
 
 def test_iter_directory_arg():
     """Test that iter_directory requires an argument."""
@@ -96,3 +107,29 @@ def test_filter_images_size(temp_image_directory):
     image_dir, num_images, num_other = temp_image_directory
     result = filter(is_image_filename, iter_directory(image_dir.strpath))
     assert len(list(result)) == num_images
+
+
+########################################################################
+# Tests for connecting to Google Drive API
+
+def test_credentials_valid():
+    """Test that get_credentials from quickstart still works."""
+    from quickstart import get_credentials
+    credentials = get_credentials()
+    assert not credentials.invalid
+
+
+def test_make_google_drive_service(service):
+    """Test that a google drive service instance is created smoothly."""
+    assert isinstance(service, Resource)
+
+
+def test_get_google_file_ids(service):
+    """Test request to get new unique google file ids to use."""
+    from google_drive_upload import get_google_file_ids
+    assert isinstance(get_google_file_ids(service), set)
+
+
+def test_start_upload_returns_uri(service):
+    """Test that attempt to start uploading a file returns a resumable uri."""
+    from google_drive_upload import start_upload

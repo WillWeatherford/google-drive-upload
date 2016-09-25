@@ -15,4 +15,8 @@ setup(name='Google Drive Image Uploader',
       include_package_data=True,
       zip_safe=False,
       test_suite='google-drive-upload',
+      entry_points="""\
+      [console_scripts]
+      gdrive=google_drive_upload:main
+      """,
       )
