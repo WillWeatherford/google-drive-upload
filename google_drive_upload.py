@@ -76,8 +76,11 @@ def get_access_token():
 
 def save_local_file_data(filename, **kwargs):
     """Save the data for the uploading file in a local json file."""
-    with open(JSON_DATA_FILE, 'r') as json_file:
-        data = json.load(json_file)
+    try:
+        with open(JSON_DATA_FILE, 'r') as json_file:
+            data = json.load(json_file)
+    except FileNotFoundError:
+        pass
     with open(JSON_DATA_FILE, 'w') as json_file:
         data.setdefault(filename, {}).update(kwargs)
         json.dump(data, json_file)
@@ -85,12 +88,17 @@ def save_local_file_data(filename, **kwargs):
 
 def get_local_file_data(filename):
     """Get file information from local json file."""
-    with open(JSON_DATA_FILE, 'r') as json_file:
-        data = json.load(json_file)
-        try:
-            return data['filename']
-        except KeyError:
-            raise ValueError('File is not in local data: {}'.format(filename))
+    try:
+        with open(JSON_DATA_FILE, 'r') as json_file:
+            data = json.load(json_file)
+            try:
+                return data['filename']
+            except KeyError:
+                raise ValueError('File not in local data: {}'.format(filename))
+    except FileNotFoundError:
+        with open(JSON_DATA_FILE, 'w') as json_file:
+            json.dump({}, json_file)
+            raise ValueError('File not in local data: {}'.format(filename))
 
 
 @delay_and_retry
