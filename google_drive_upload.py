@@ -26,7 +26,7 @@ def iter_directory(path):
     if not os.path.isdir(path):
         raise ValueError('No such directory: {}'.format(path))
     for filename in os.listdir(path):
-        yield os.path.join(path, filename)
+        yield filename
 
 
 def is_image_filename(filename):
@@ -118,15 +118,16 @@ def start_resumable_session(filename, content_type, byte_size, access_token):
         raise ValueError('Failed to get upload ID ')
 
 
-def begin_file_upload(filename, resume_uri, content_type, byte_size, access_token):
+def begin_file_upload(filename, filepath, resume_uri, content_type, byte_size, access_token):
     """Make PUT request with content size and resumable URI."""
     headers = {
         'Authorization': 'Bearer {}'.format(access_token),
         'Content-Length': byte_size,
         'Content-Type': content_type,
     }
-    file_bytes = open(filename, 'rb').read()
-    requests.put(resume_uri, headers=headers, files={filename: file_bytes})
+    with open(filepath, 'rb') as file_buffer:
+        file_bytes = file_buffer.read()
+        requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
 def get_upload_completion_status(resume_uri, byte_size, access_token):
@@ -137,10 +138,10 @@ def get_upload_completion_status(resume_uri, byte_size, access_token):
         'Content-Range': 'bytes */{}'.format(byte_size),
     }
     response = requests.put(resume_uri, headers=headers)
-    return response.headers['Range'].split('-')[1]
+    return int(response.headers['Range'].split('-')[1])
 
 
-def resume_file_upload(filename, resume_uri, progress, byte_size, access_token):
+def resume_file_upload(filename, filepath, resume_uri, progress, byte_size, access_token):
     """Resume a file upload with information on its completion progress."""
     start = int(progress) + 1
     byte_size = int(byte_size)
@@ -150,11 +151,12 @@ def resume_file_upload(filename, resume_uri, progress, byte_size, access_token):
         'Content-Length': '{}'.format(byte_size - start),
         'Content-Range': 'bytes {}/{}'.format(progress, byte_size),
     }
-    file_bytes = open(filename, 'rb').read()[start:]
-    requests.put(resume_uri, headers=headers, files={filename: file_bytes})
+    with open(filepath, 'rb') as file_buffer:
+        file_bytes = file_buffer.read()[start:]
+        requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
-def process_computer_vision(filename):
+def process_computer_vision(filepath):
     """Dummy function simulating real processing of file by computer vision."""
     # return random.choice([0, 1])
     return True
@@ -166,8 +168,11 @@ def main(directory):
     access_token = credentials.access_token
 
     for filename in filter(is_image_filename, iter_directory(directory)):
-        byte_size = get_file_byte_size(filename)
-        content_type = get_file_mimetype(filename)
+
+        filepath = os.path.join(directory, filename)
+        byte_size = get_file_byte_size(filepath)
+        content_type = get_file_mimetype(filepath)
+
         try:
             file_data = get_local_file_data(filename)
         except ValueError:
@@ -187,15 +192,18 @@ def main(directory):
             progress = get_upload_completion_status(resume_uri, byte_size, access_token)
         except KeyError:
             # no record in google of this upload ever having started
-            resume_uri = start_resumable_session(
-                filename,
-                content_type,
-                byte_size, access_token,
-            )
+            resume_uri = start_resumable_session(filename, content_type, byte_size, access_token)
             save_local_file_data(filename, resume_uri=resume_uri, complete=False)
             progress = 0
 
-        resume_file_upload(filename, resume_uri, progress, byte_size, access_token)
+        # Either begin or resume upload, depending if any progress has been made
+        if progress:
+            resume_file_upload(filename, filepath, resume_uri, progress, byte_size, access_token)
+        else:
+            begin_file_upload(filename, filepath, resume_uri, content_type, byte_size, access_token)
+
+        # If we reach this far, the file upoad is complete.
+        save_local_file_data(filename, complete=True)
 
 
 if __name__ == '__main__':
