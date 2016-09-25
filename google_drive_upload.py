@@ -18,7 +18,7 @@ for ext, mimetype in mimetypes.types_map.items():
     else:
         OTHER_EXTS.add(ext)
 UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files'
-JSON_DATA_FILE = 'local_storage.json'
+JSON_DATA_FILE = 'local_data.json'
 
 
 def iter_directory(path):
@@ -26,7 +26,7 @@ def iter_directory(path):
     if not os.path.isdir(path):
         raise ValueError('No such directory: {}'.format(path))
     for filename in os.listdir(path):
-        yield filename
+        yield os.path.join(path, filename)
 
 
 def is_image_filename(filename):
@@ -37,12 +37,12 @@ def is_image_filename(filename):
 
 def get_file_byte_size(filename):
     """Return number of bytes aka content length of a given file by name."""
-    return os.path.getsize()
+    return '{}'.format(os.path.getsize(filename))
 
 
 def get_file_mimetype(filename):
     """Return the mimetype of a given file by name."""
-    return mimetype.guess_type(filename)[0]
+    return mimetypes.guess_type(filename)[0]
 
 
 def make_google_drive_service():
@@ -64,7 +64,7 @@ def save_local_file_data(filename, **kwargs):
     """Save the data for the uploading file in a local json file."""
     with open(JSON_DATA_FILE, 'r+') as json_file:
         data = json.load(json_file)
-        data[filename].update(kwargs)
+        data.setdefault(filename, {}).update(kwargs)
         json.dump(data, json_file)
 
 
@@ -133,19 +133,21 @@ def get_upload_completion_status(resume_uri, byte_size, access_token):
     """Request the amount of bytes already completed in the upload."""
     headers = {
         'Authorization': 'Bearer {}'.format(access_token),
-        'Content-Length': 0,
+        'Content-Length': '0',
         'Content-Range': 'bytes */{}'.format(byte_size),
     }
     response = requests.put(resume_uri, headers=headers)
-    return int(response.headers['Range'].split('-')[1])
+    return response.headers['Range'].split('-')[1]
 
 
 def resume_file_upload(filename, resume_uri, progress, byte_size, access_token):
     """Resume a file upload with information on its completion progress."""
-    start = progress + 1
+    start = int(progress) + 1
+    byte_size = int(byte_size)
+
     headers = {
         'Authorization': 'Bearer {}'.format(access_token),
-        'Content-Length': byte_size - start,
+        'Content-Length': '{}'.format(byte_size - start),
         'Content-Range': 'bytes {}/{}'.format(progress, byte_size),
     }
     file_bytes = open(filename, 'rb')[start:]
@@ -154,7 +156,8 @@ def resume_file_upload(filename, resume_uri, progress, byte_size, access_token):
 
 def process_computer_vision(filename):
     """Dummy function simulating real processing of file by computer vision."""
-    return random.choice([0, 1])
+    # return random.choice([0, 1])
+    return True
 
 
 def main(directory):
@@ -201,4 +204,5 @@ if __name__ == '__main__':
     except IndexError:
         print('Usage: gdrive <directory>')
         sys.exit()
-    main(directory)
+    else:
+        main(directory)
