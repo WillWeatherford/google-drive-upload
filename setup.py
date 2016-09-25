@@ -17,6 +17,6 @@ setup(name='Google Drive Image Uploader',
       test_suite='google-drive-upload',
       entry_points="""\
       [console_scripts]
-      gdrive=google_drive_upload:main
+      google-drive=google_drive_upload:main
       """,
       )
