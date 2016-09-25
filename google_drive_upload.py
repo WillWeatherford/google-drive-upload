@@ -1,5 +1,6 @@
 """Gather, analyze and upload image files to Google Drive."""
 import os
+import sys
 import json
 import httplib2
 import requests
@@ -72,9 +73,10 @@ def get_local_file_data(filename):
             raise ValueError('File is not in local data: {}'.format(filename))
 
 
-def insert_placeholder(filename, access_token):
+def upload_placeholder(filename, access_token):
     """Insert 0 byte file onto Google Drive instead of real thing."""
     headers = {
+        'Host': 'www.googleapis.com',
         'Content-Type': 'image/jpeg',
         'Authorization': 'Bearer {}'.format(access_token),
         'Content-Length': 0,
@@ -133,15 +135,16 @@ def get_upload_completion_status(resume_uri, byte_size, access_token):
     return int(response.headers['Range'].split('-')[1])
 
 
-def resume_file_upload(resume_uri, progress, byte_size, access_token):
-    """Resume a file upload with information on its completion status."""
+def resume_file_upload(filename, resume_uri, progress, byte_size, access_token):
+    """Resume a file upload with information on its completion progress."""
     start = progress + 1
     headers = {
         'Authorization': 'Bearer {}'.format(access_token),
         'Content-Length': byte_size - start,
         'Content-Range': 'bytes {}/{}'.format(progress, byte_size),
     }
-    requests.put(resume_uri, headers=headers)
+    file_bytes = open(filename, 'rb')[start:]
+    requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
 def process_computer_vision(filename):
@@ -149,10 +152,11 @@ def process_computer_vision(filename):
     return random.choice([0, 1])
 
 
-def main():
+def main(directory):
     """Main process loop."""
-    service = make_google_drive_service()
-    image_files = filter(is_image_filename, iter_directory)
+    credentials = get_credentials()
+    access_token = credentials.access_token
+    image_files = filter(is_image_filename, iter_directory(directory))
 
     for filename in image_files:
         byte_size, content_type = get_file_data(filename)
@@ -162,7 +166,7 @@ def main():
             file_data = {}
             cv_result = process_computer_vision(filename)
             if not cv_result:
-                insert_placeholder(filename, service)
+                upload_placeholder(filename, access_token)
                 save_local_file_data(filename, complete=True)
                 continue
 
@@ -172,15 +176,24 @@ def main():
 
         try:
             resume_uri = file_data['resume_uri']
-            progress = get_upload_completion_status(resume_uri, byte_size)
+            progress = get_upload_completion_status(resume_uri, byte_size, access_token)
         except KeyError:
             # no record in google of this upload ever having started
-            resume_uri = begin_file_upload(filename, content_type, byte_size)
+            resume_uri = start_resumable_session(
+                filename,
+                content_type,
+                byte_size, access_token,
+            )
             save_local_file_data(filename, resume_uri=resume_uri, complete=False)
             progress = 0
 
-        resume_file_upload(filename, progress, byte_size)
+        resume_file_upload(filename, resume_uri, progress, byte_size, access_token)
 
 
 if __name__ == '__main__':
+    try:
+        directory = sys.argv[1]
+    except IndexError:
+        print('Usage: gdrive <directory>')
+        sys.exit()
     main()
