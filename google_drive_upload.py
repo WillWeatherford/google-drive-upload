@@ -125,7 +125,7 @@ def begin_file_upload(filename, resume_uri, content_type, byte_size, access_toke
         'Content-Length': byte_size,
         'Content-Type': content_type,
     }
-    file_bytes = open(filename, 'rb')
+    file_bytes = open(filename, 'rb').read()
     requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
@@ -150,7 +150,7 @@ def resume_file_upload(filename, resume_uri, progress, byte_size, access_token):
         'Content-Length': '{}'.format(byte_size - start),
         'Content-Range': 'bytes {}/{}'.format(progress, byte_size),
     }
-    file_bytes = open(filename, 'rb')[start:]
+    file_bytes = open(filename, 'rb').read()[start:]
     requests.put(resume_uri, headers=headers, files={filename: file_bytes})
 
 
